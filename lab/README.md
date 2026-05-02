@@ -2,6 +2,24 @@
 
 An intelligent stock data retrieval system built on the Model Context Protocol (MCP) that combines AI-powered query understanding with reliable financial data access. The system uses Google's Gemini AI to interpret natural language queries and automatically selects the appropriate tools to fetch stock market information.
 
+## Summary
+
+This repository is a **learning project** for MCP (Model Context Protocol): a **Python MCP server** exposes stock tools backed by **Yahoo Finance** (`yfinance`) with a **local CSV fallback** (`stocks_data.csv`). **Clients** connect over **stdio**, list tools, and use an LLM to map natural language to the right tool and arguments:
+
+| Component | Role |
+|-----------|------|
+| **`mcp_server.py`** | FastMCP server: `get_stock_price`, `compare_stocks`, `check_data_sources` |
+| **`mcp_client.py`** | Gemini routes queries → `call_tool` |
+| **`mcp_client_ollama.py`** | Same flow using **local Ollama** instead of Gemini |
+
+**Data flow:** Yahoo Finance first; if unavailable, prices come from the CSV. **`check_data_sources`** probes both paths so you can verify connectivity without quoting a ticker.
+
+**CLI:** Interactive prompts, or one-shot **`python mcp_client.py --query "..."`** / **`mcp_client_ollama.py --query "..."`**.
+
+**Secrets:** Put **`GEMINI_API_KEY`** in **`lab/.env`** (never commit `.env`; it is gitignored).
+
+Full setup, usage examples, and troubleshooting follow below.
+
 ## Features
 
 - 🤖 AI-Powered Query Understanding: Uses Google Gemini to interpret natural language stock queries
@@ -18,27 +36,35 @@ An intelligent stock data retrieval system built on the Model Context Protocol (
 
 ## Architecture
 
-The system consists of two main components:
+The system consists of an **MCP server** and one or more **MCP clients**:
 
-### MCP Client (mcp_client.py)
+### MCP Server (`mcp_server.py`)
 
-- Handles user input and natural language processing
-
-- Connects to the MCP server via stdio communication
-
-- Uses Gemini AI to identify appropriate tools and arguments
-
-- Manages the interactive user session
-
-### MCP Server (mcp_server.py)
-
-- Provides stock data tools through the MCP protocol
+- Provides stock data tools through the MCP protocol (stdio)
 
 - Implements Yahoo Finance API integration with CSV fallback
 
-- Exposes two main tools: get_stock_price and compare_stocks
+- Exposes **three** tools: `get_stock_price`, `compare_stocks`, `check_data_sources`
 
 - Handles data source failover automatically
+
+### MCP Client — Gemini (`mcp_client.py`)
+
+- Handles user input and natural language processing
+
+- Connects to the MCP server via stdio (spawns the server subprocess)
+
+- Uses **Google Gemini** to identify appropriate tools and arguments
+
+- Supports **`--query "..."`** for a single non-interactive run
+
+### MCP Client — Ollama (`mcp_client_ollama.py`)
+
+- Same MCP wiring as the Gemini client
+
+- Uses a **local Ollama** model (see `OLLAMA_HOST`, `OLLAMA_MODEL`) for tool selection
+
+- Same **`--query`** option for one-shot runs
 
 ## Installation
 
@@ -71,12 +97,18 @@ cwd="C:/your/project/path"  # Update this path
 
 ### Starting the System
 
-1. Run the client:
+1. Run the client (interactive):
 ```
 python mcp_client.py
 ```
 
-2. Enter natural language queries:
+Or run **one query** and exit:
+```
+python mcp_client.py --query "What is the price of IBM?"
+python mcp_client_ollama.py --query "Check data sources"
+```
+
+2. Enter natural language queries (interactive mode):
 ```
 What is your query? → What's the current price of Apple?
 What is your query? → compare stock price of Apple and Microsoft
@@ -108,12 +140,13 @@ Output: The current price of TSLA is $250.87 (from local data)
 ### File Structure
 
 ```
-├── mcp_client.py          # Main client application
+├── mcp_client.py          # Gemini MCP client
+├── mcp_client_ollama.py   # Ollama MCP client
 ├── mcp_server.py          # MCP server with stock tools
-├── .env                   # Environment variables (API keys)
+├── .env                   # Environment variables (API keys); gitignored
 ├── requirements.txt       # Python dependencies
 ├── stocks_data.csv        # Fallback stock data
-└── README.md             # This file
+└── README.md              # This file
 ```
 
 ## Available Tools
@@ -144,6 +177,17 @@ symbol2 (string): Second stock ticker symbol
 "Compare Apple and Google stocks"
 "Which is higher, MSFT or AAPL?"
 "Show me Tesla vs Ford stock prices"
+```
+
+`check_data_sources`
+
+- Purpose: Report whether Yahoo Finance (`yfinance`) and the local CSV are usable (no parameters)
+
+- Example Usage:
+```
+"Check data sources"
+"Is Yahoo Finance working?"
+"Health check for stock data"
 ```
 
 ## Configuration
@@ -231,7 +275,7 @@ error: error:00000000:invalid library (0):OPENSSL_internal:invalid library (0).
 #### "API key error":
 - Verify GEMINI_API_KEY is set in .env
 - Check API key validity and quotas
-- Ensure .env file is in the project root
+- Ensure `.env` file is in the **`lab`** directory (alongside the client scripts) or otherwise discoverable by `python-dotenv`
 
 #### Debug Mode
 
