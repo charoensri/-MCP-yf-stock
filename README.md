@@ -27,3 +27,6 @@ Do **not** commit `.env`; it is listed in `.gitignore`.
 ---
 
 **Full documentation** (features, architecture, troubleshooting): **[lab/README.md](lab/README.md)**
+
+--- Seri testing gh commit/push
+
