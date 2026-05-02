@@ -30,4 +30,4 @@ Do **not** commit `.env`; it is listed in `.gitignore`.
 
 --- 
 Seri testing gh pr 123
-
+Seri git checkout -b feature/mcp-yf-stock
